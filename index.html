@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f0f1a">
+  <title>Expense Tracker</title>
+  <style>
+    /* ── Reset & Variables ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0f0f1a;
+      --surface:      #1a1a2e;
+      --surface2:     #16213e;
+      --surface3:     #0d1b2a;
+      --accent:       #e94560;
+      --accent-dim:   rgba(233,69,96,0.15);
+      --green:        #4ade80;
+      --green-dim:    rgba(74,222,128,0.12);
+      --yellow:       #fbbf24;
+      --text:         #eaeaea;
+      --text-muted:   #7a8499;
+      --border:       rgba(255,255,255,0.07);
+      --radius:       18px;
+      --radius-sm:    10px;
+      --safe-top:     env(safe-area-inset-top, 0px);
+      --safe-bottom:  env(safe-area-inset-bottom, 0px);
+    }
+
+    html { height: 100%; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100%;
+      padding-bottom: calc(90px + var(--safe-bottom));
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      padding-top: calc(var(--safe-top) + 16px);
+      padding-bottom: 0;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.4);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px 14px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    header h1 span {
+      color: var(--accent);
+    }
+
+    #unsaved-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--yellow);
+      opacity: 0;
+      transition: opacity 0.2s;
+      margin-left: 6px;
+      display: inline-block;
+    }
+    #unsaved-dot.visible { opacity: 1; }
+
+    /* ── Month Tabs ───────────────────────────────────────────── */
+    #month-tabs {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      gap: 8px;
+      padding: 0 20px 14px;
+    }
+    #month-tabs::-webkit-scrollbar { display: none; }
+
+    .tab {
+      scroll-snap-align: start;
+      flex-shrink: 0;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 18px;
+      transition: all 0.2s;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ── Main content ─────────────────────────────────────────── */
+    main { padding: 16px 0; }
+
+    /* ── Skeleton loader ──────────────────────────────────────── */
+    #skeleton { padding: 0 16px; }
+
+    .skeleton-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      margin-bottom: 14px;
+      padding: 20px;
+    }
+
+    .skeleton-line {
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--surface3) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+      height: 14px;
+      margin-bottom: 12px;
+    }
+    .skeleton-line.title  { width: 40%; height: 16px; margin-bottom: 20px; }
+    .skeleton-line.short  { width: 30%; }
+    .skeleton-line.medium { width: 55%; }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Cards ────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      margin: 0 16px 14px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      align-items: center;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      padding: 18px 20px;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .card-header-left {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+    }
+
+    .card-icon {
+      align-items: center;
+      border-radius: 10px;
+      display: flex;
+      font-size: 18px;
+      height: 36px;
+      justify-content: center;
+      width: 36px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+
+    .card-subtitle {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .card-chevron {
+      color: var(--text-muted);
+      font-size: 18px;
+      transition: transform 0.25s;
+    }
+    .card.open .card-chevron { transform: rotate(180deg); }
+
+    .card-body {
+      padding: 0 20px 4px;
+    }
+
+    .card.collapsible .card-body {
+      display: none;
+    }
+    .card.collapsible.open .card-body {
+      display: block;
+    }
+
+    /* Non-collapsible cards always show body */
+    .card:not(.collapsible) .card-header {
+      cursor: default;
+      padding-bottom: 6px;
+    }
+    .card:not(.collapsible) .card-body {
+      padding-top: 0;
+    }
+
+    /* ── Field rows ───────────────────────────────────────────── */
+    .field-row {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      padding: 13px 0;
+      gap: 12px;
+    }
+    .field-row:last-child { border-bottom: none; }
+
+    .field-label {
+      color: var(--text-muted);
+      flex: 1;
+      font-size: 14px;
+      min-width: 0;
+    }
+
+    .field-input {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 16px; /* MUST be 16px to prevent iOS auto-zoom */
+      font-weight: 500;
+      padding: 9px 13px;
+      text-align: right;
+      transition: border-color 0.2s;
+      width: 130px;
+      -webkit-appearance: none;
+    }
+    .field-input:focus {
+      border-color: var(--accent);
+      outline: none;
+    }
+    .field-input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.5;
+    }
+
+    .field-value {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .field-value.formula {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* ── Summary card ─────────────────────────────────────────── */
+    .summary-row {
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      padding: 16px 0;
+    }
+    .summary-row:last-child { border-bottom: none; }
+
+    .summary-label {
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .summary-value {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .summary-value.income     { color: var(--green); }
+    .summary-value.expense    { color: var(--accent); }
+    .summary-value.invest     { color: var(--yellow); }
+    .summary-value.positive   { color: var(--green); }
+    .summary-value.negative   { color: var(--accent); }
+
+    /* ── Save bar ─────────────────────────────────────────────── */
+    .save-bar {
+      background: var(--surface);
+      bottom: 0;
+      box-shadow: 0 -4px 30px rgba(0,0,0,0.5);
+      left: 0;
+      padding: 12px 20px;
+      padding-bottom: calc(12px + var(--safe-bottom));
+      position: fixed;
+      right: 0;
+      z-index: 200;
+    }
+
+    #save-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 14px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 17px;
+      font-weight: 700;
+      padding: 16px;
+      transition: opacity 0.15s, transform 0.1s;
+      width: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #save-btn:active  { transform: scale(0.98); }
+    #save-btn:disabled {
+      background: var(--surface2);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+    #save-btn.loading {
+      background: var(--surface2);
+      color: var(--text-muted);
+    }
+
+    /* ── Toast ────────────────────────────────────────────────── */
+    #toast {
+      background: var(--surface);
+      border-radius: 14px;
+      bottom: calc(90px + var(--safe-bottom) + 10px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      left: 50%;
+      max-width: calc(100vw - 40px);
+      opacity: 0;
+      padding: 14px 20px;
+      pointer-events: none;
+      position: fixed;
+      transform: translateX(-50%) translateY(10px);
+      transition: opacity 0.25s, transform 0.25s;
+      white-space: nowrap;
+      z-index: 300;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    #toast.success { border-left: 4px solid var(--green); }
+    #toast.error   { border-left: 4px solid var(--accent); }
+    #toast.info    { border-left: 4px solid var(--yellow); }
+
+    /* ── Divider ──────────────────────────────────────────────── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 4px 0;
+    }
+
+    /* ── Note text ────────────────────────────────────────────── */
+    .note {
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 8px 0 14px;
+      text-align: center;
+    }
+
+    /* ── Error state ──────────────────────────────────────────── */
+    #error-state {
+      display: none;
+      margin: 20px 16px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      text-align: center;
+    }
+    #error-state .error-icon { font-size: 40px; margin-bottom: 12px; }
+    #error-state .error-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+    #error-state .error-msg { color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 20px; }
+    #retry-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 28px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────────────────────── -->
+<header>
+  <div class="header-top">
+    <h1>Expense <span>Tracker</span><span id="unsaved-dot"></span></h1>
+  </div>
+  <div id="month-tabs"></div>
+</header>
+
+<!-- ── MAIN ────────────────────────────────────────────────────── -->
+<main id="app">
+
+  <!-- Skeleton loader -->
+  <div id="skeleton">
+    <div class="skeleton-card">
+      <div class="skeleton-line title"></div>
+      <div class="skeleton-line medium"></div>
+      <div class="skeleton-line short"></div>
+      <div class="skeleton-line medium"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton-line title"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line short"></div>
+      <div class="skeleton-line medium"></div>
+      <div class="skeleton-line"></div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton-line title"></div>
+      <div class="skeleton-line medium"></div>
+      <div class="skeleton-line short"></div>
+    </div>
+  </div>
+
+  <!-- Error state -->
+  <div id="error-state">
+    <div class="error-icon">⚠️</div>
+    <div class="error-title">Could not load data</div>
+    <div class="error-msg" id="error-msg-text">Check your internet connection and try again.</div>
+    <button id="retry-btn" onclick="retryLoad()">Try Again</button>
+  </div>
+
+  <!-- Content (hidden until loaded) -->
+  <div id="content" style="display:none"></div>
+
+</main>
+
+<!-- ── SAVE BAR ─────────────────────────────────────────────────── -->
+<div class="save-bar">
+  <button id="save-btn" onclick="handleSave()">Save Changes</button>
+</div>
+
+<!-- ── TOAST ────────────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ================================================================
+// CONFIGURATION — paste your values here after setup
+// ================================================================
+const CONFIG = {
+  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbxhyT5slJNjOZNXbC4LwkCkk-v9rVLDAYxiNXhh15joGnV0RxnvvLIh4rgb5dCP2V1i/exec',
+  token:         'Tracker2026',
+};
+
+// ================================================================
+// Data model — defines every editable and read-only field per section
+// Label strings MUST match exactly what is in your Google Sheet
+// ================================================================
+const MONTHS = ['Sep-26', 'Oct-26', 'Nov-26', 'Dec-26'];
+
+const SECTION_CONFIG = [
+  {
+    id:       'income',
+    title:    'Monthly Income',
+    icon:     '💰',
+    iconBg:   'rgba(74,222,128,0.15)',
+    section:  'main',
+    fields: [
+      { label: 'Monthly Income', editable: true },
+    ],
+  },
+  {
+    id:       'expenses',
+    title:    'Direct Expenses',
+    icon:     '🧾',
+    iconBg:   'rgba(233,69,96,0.15)',
+    section:  'main',
+    fields: [
+      { label: 'Rent',                        editable: true },
+      { label: 'Maintenance',                 editable: true },
+      { label: 'Water Bill',                  editable: true },
+      { label: 'Electricity',                 editable: true },
+      { label: 'Gas',                         editable: true },
+      { label: 'Telephone Bill',              editable: true },
+      { label: 'Wifi Bill',                   editable: true },
+      { label: 'Car Loan',                    editable: true },
+      { label: 'Personal Loan',               editable: true },
+      { label: 'Company Interest-Free Loan',  editable: true },
+      { label: 'Fuel',       editable: false, hint: 'from Fuel sub-table' },
+      { label: 'Grocery',    editable: false, hint: 'from Grocery sub-table' },
+      { label: 'OTT',        editable: false, hint: 'from OTT Subscriptions' },
+      { label: 'Misc Expenses', editable: false, hint: 'from Miscellaneous' },
+    ],
+  },
+  {
+    id:          'ott',
+    title:       'OTT Subscriptions',
+    icon:        '📺',
+    iconBg:      'rgba(139,92,246,0.15)',
+    section:     'ott',
+    collapsible: true,
+    note:        'Feeds into the OTT row above',
+    fields: [
+      { label: 'Youtube Premium', editable: true },
+      { label: 'Netflix',         editable: true },
+      { label: 'Hotstar',         editable: true },
+      { label: 'Amazon Prime',    editable: true },
+      { label: 'Total',           editable: false },
+    ],
+  },
+  {
+    id:          'fuel',
+    title:       'Fuel',
+    icon:        '⛽',
+    iconBg:      'rgba(251,191,36,0.15)',
+    section:     'fuel',
+    collapsible: true,
+    note:        'Feeds into the Fuel row above',
+    fields: [
+      { label: 'Fuel Item 1', editable: true },
+      { label: 'Fuel Item 2', editable: true },
+      { label: 'Fuel Item 3', editable: true },
+      { label: 'Fuel Item 4', editable: true },
+      { label: 'Fuel Item 5', editable: true },
+      { label: 'Total',       editable: false },
+    ],
+  },
+  {
+    id:          'grocery',
+    title:       'Grocery',
+    icon:        '🛒',
+    iconBg:      'rgba(74,222,128,0.12)',
+    section:     'grocery',
+    collapsible: true,
+    note:        'Feeds into the Grocery row above',
+    fields: [
+      { label: 'Grocery Item 1', editable: true },
+      { label: 'Grocery Item 2', editable: true },
+      { label: 'Grocery Item 3', editable: true },
+      { label: 'Grocery Item 4', editable: true },
+      { label: 'Grocery Item 5', editable: true },
+      { label: 'Total',          editable: false },
+    ],
+  },
+  {
+    id:          'misc',
+    title:       'Miscellaneous',
+    icon:        '📦',
+    iconBg:      'rgba(249,115,22,0.15)',
+    section:     'misc',
+    collapsible: true,
+    note:        'Feeds into the Misc Expenses row above',
+    fields: [
+      { label: 'Misc 1', editable: true },
+      { label: 'Misc 2', editable: true },
+      { label: 'Misc 3', editable: true },
+      { label: 'Total',  editable: false },
+    ],
+  },
+  {
+    id:       'investments',
+    title:    'Investments & Savings',
+    icon:     '📈',
+    iconBg:   'rgba(251,191,36,0.12)',
+    section:  'main',
+    fields: [
+      { label: 'PF',       editable: true },
+      { label: 'ESOP',     editable: true },
+      { label: 'NPS',      editable: true },
+      { label: 'SIP',      editable: true },
+      { label: 'US Stocks', editable: true },
+      { label: 'Total Investments', editable: false },
+    ],
+  },
+];
+
+// ================================================================
+// State
+// ================================================================
+const state = {
+  currentMonth: MONTHS[0],
+  cache:        {},   // { 'Sep-26': { main, misc, fuel, grocery, ott } }
+  dirty:        false,
+};
+
+// ================================================================
+// Formatting
+// ================================================================
+const inrFmt = new Intl.NumberFormat('en-IN', {
+  style:                 'currency',
+  currency:              'INR',
+  maximumFractionDigits: 0,
+});
+
+function formatINR(val) {
+  const n = Number(val);
+  if (val === '' || val === null || val === undefined || isNaN(n)) return '—';
+  return inrFmt.format(n);
+}
+
+function rawToDisplay(val) {
+  const n = Number(val);
+  if (val === '' || val === null || val === undefined || isNaN(n) || n === 0) return '';
+  return String(n);
+}
+
+// ================================================================
+// API
+// ================================================================
+async function fetchMonth(month) {
+  const url = `${CONFIG.appsScriptUrl}?token=${encodeURIComponent(CONFIG.token)}&month=${encodeURIComponent(month)}`;
+  const res  = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
+}
+
+async function saveUpdates(month, updates) {
+  // No Content-Type header → browser treats it as a simple request
+  // → no CORS preflight → Apps Script doPost receives it fine
+  const res = await fetch(CONFIG.appsScriptUrl, {
+    method: 'POST',
+    body:   JSON.stringify({ token: CONFIG.token, month, updates }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
+}
+
+// ================================================================
+// Month tabs
+// ================================================================
+function renderTabs() {
+  const container = document.getElementById('month-tabs');
+  container.innerHTML = '';
+  MONTHS.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className    = 'tab' + (m === state.currentMonth ? ' active' : '');
+    btn.textContent  = m;
+    btn.dataset.month = m;
+    btn.addEventListener('click', () => switchMonth(m));
+    container.appendChild(btn);
+  });
+}
+
+async function switchMonth(month) {
+  if (month === state.currentMonth) return;
+
+  if (state.dirty) {
+    const ok = confirm('You have unsaved changes. Switch months and discard them?');
+    if (!ok) return;
+    state.dirty = false;
+    document.getElementById('unsaved-dot').classList.remove('visible');
+  }
+
+  state.currentMonth = month;
+  renderTabs();
+  await loadMonth(month);
+}
+
+// ================================================================
+// Load & render
+// ================================================================
+async function loadMonth(month) {
+  showSkeleton();
+  hideError();
+
+  try {
+    if (!state.cache[month]) {
+      state.cache[month] = await fetchMonth(month);
+    }
+    renderContent(state.cache[month]);
+    hideSkeleton();
+    showContent();
+  } catch (err) {
+    hideSkeleton();
+    showError(err.message);
+  }
+}
+
+function renderContent(data) {
+  const container = document.getElementById('content');
+  container.innerHTML = '';
+
+  // Render each section card
+  SECTION_CONFIG.forEach(sec => {
+    container.appendChild(buildCard(sec, data));
+  });
+
+  // Summary card (read-only)
+  container.appendChild(buildSummaryCard(data.main));
+}
+
+function buildCard(sec, data) {
+  const sectionData = data[sec.section] || {};
+  const card = document.createElement('div');
+  card.className = 'card' + (sec.collapsible ? ' collapsible' : '');
+  card.dataset.sectionId = sec.id;
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.className = 'card-header';
+
+  const left = document.createElement('div');
+  left.className = 'card-header-left';
+
+  const iconEl = document.createElement('div');
+  iconEl.className = 'card-icon';
+  iconEl.style.background = sec.iconBg;
+  iconEl.textContent = sec.icon;
+
+  const titleWrap = document.createElement('div');
+  const titleEl = document.createElement('div');
+  titleEl.className   = 'card-title';
+  titleEl.textContent = sec.title;
+  titleWrap.appendChild(titleEl);
+
+  // Show section total in subtitle for collapsible cards
+  if (sec.collapsible) {
+    const totalField = sec.fields.find(f => !f.editable);
+    if (totalField) {
+      const totalVal = sectionData[totalField.label];
+      const sub = document.createElement('div');
+      sub.className   = 'card-subtitle';
+      sub.dataset.subtitleFor = sec.id;
+      sub.textContent = totalVal ? formatINR(totalVal) : 'tap to expand';
+      titleWrap.appendChild(sub);
+    }
+  }
+
+  left.appendChild(iconEl);
+  left.appendChild(titleWrap);
+  hdr.appendChild(left);
+
+  if (sec.collapsible) {
+    const chev = document.createElement('span');
+    chev.className   = 'card-chevron';
+    chev.textContent = '⌄';
+    hdr.appendChild(chev);
+    hdr.addEventListener('click', () => card.classList.toggle('open'));
+  }
+
+  card.appendChild(hdr);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'card-body';
+
+  if (sec.note) {
+    const note = document.createElement('div');
+    note.className   = 'note';
+    note.textContent = sec.note;
+    body.appendChild(note);
+  }
+
+  sec.fields.forEach(field => {
+    const row = document.createElement('div');
+    row.className = 'field-row';
+
+    const lbl = document.createElement('label');
+    lbl.className   = 'field-label';
+    lbl.textContent = field.label + (field.hint ? '' : '');
+
+    if (field.hint) {
+      const hint = document.createElement('span');
+      hint.style.cssText = 'font-size:11px; display:block; margin-top:2px; opacity:0.6;';
+      hint.textContent = field.hint;
+      lbl.appendChild(hint);
+    }
+
+    if (field.editable) {
+      const inputId = `input-${sec.id}-${field.label.replace(/\s+/g, '-')}`;
+      lbl.htmlFor = inputId;
+
+      const input = document.createElement('input');
+      input.type        = 'text';
+      input.inputMode   = 'decimal';
+      input.className   = 'field-input';
+      input.id          = inputId;
+      input.dataset.section = sec.section;
+      input.dataset.label   = field.label;
+      input.dataset.cardId  = sec.id;
+      input.value       = rawToDisplay(sectionData[field.label]);
+      input.placeholder = '0';
+
+      input.addEventListener('input', () => markDirty());
+      input.addEventListener('blur', () => {
+        // normalize: remove non-numeric chars except decimal
+        const cleaned = input.value.replace(/[^0-9.]/g, '');
+        input.value = cleaned;
+      });
+
+      row.appendChild(lbl);
+      row.appendChild(input);
+    } else {
+      // Read-only / formula cell
+      const val = document.createElement('span');
+      val.className = 'field-value formula';
+      val.dataset.readonlySection = sec.section;
+      val.dataset.readonlyLabel   = field.label;
+      val.dataset.cardId          = sec.id;
+      val.textContent = formatINR(sectionData[field.label]);
+
+      row.appendChild(lbl);
+      row.appendChild(val);
+    }
+
+    body.appendChild(row);
+  });
+
+  card.appendChild(body);
+  return card;
+}
+
+function buildSummaryCard(mainData) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.id = 'summary-card';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'card-header';
+  hdr.style.cursor = 'default';
+
+  const left = document.createElement('div');
+  left.className = 'card-header-left';
+
+  const iconEl = document.createElement('div');
+  iconEl.className = 'card-icon';
+  iconEl.style.background = 'rgba(233,69,96,0.15)';
+  iconEl.textContent = '📊';
+
+  const titleEl = document.createElement('div');
+  titleEl.className   = 'card-title';
+  titleEl.textContent = 'Summary';
+  left.appendChild(iconEl);
+  left.appendChild(titleEl);
+  hdr.appendChild(left);
+  card.appendChild(hdr);
+
+  const body = document.createElement('div');
+  body.className = 'card-body';
+  body.id = 'summary-body';
+
+  const rows = [
+    { label: 'Monthly Income',    key: 'Monthly Income',    cls: 'income'  },
+    { label: 'Total Expenses',    key: 'Total Expenses',    cls: 'expense' },
+    { label: 'Total Investments', key: 'Total Investments', cls: 'invest'  },
+    { label: 'Net Balance',       key: 'Net Balance',       cls: 'netbal'  },
+  ];
+
+  rows.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'summary-row';
+
+    const lbl = document.createElement('span');
+    lbl.className   = 'summary-label';
+    lbl.textContent = r.label;
+
+    const val = document.createElement('span');
+    const rawVal = mainData ? mainData[r.key] : null;
+    val.className = 'summary-value ' + getSummaryClass(r.cls, rawVal);
+    val.dataset.summaryKey = r.key;
+    val.textContent = formatINR(rawVal);
+
+    row.appendChild(lbl);
+    row.appendChild(val);
+    body.appendChild(row);
+  });
+
+  card.appendChild(body);
+  return card;
+}
+
+function getSummaryClass(base, val) {
+  if (base === 'netbal') {
+    const n = Number(val);
+    return isNaN(n) ? '' : (n >= 0 ? 'positive' : 'negative');
+  }
+  return base;
+}
+
+// ================================================================
+// Save
+// ================================================================
+function markDirty() {
+  state.dirty = true;
+  document.getElementById('unsaved-dot').classList.add('visible');
+}
+
+async function handleSave() {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.textContent = 'Saving…';
+
+  try {
+    // Collect all input values
+    const updates = [];
+    document.querySelectorAll('.field-input').forEach(input => {
+      updates.push({
+        section: input.dataset.section,
+        label:   input.dataset.label,
+        value:   parseFloat(input.value) || 0,
+      });
+    });
+
+    const result = await saveUpdates(state.currentMonth, updates);
+
+    // Update cached data with new values
+    if (state.cache[state.currentMonth]) {
+      updates.forEach(u => {
+        if (state.cache[state.currentMonth][u.section]) {
+          state.cache[state.currentMonth][u.section][u.label] = u.value;
+        }
+      });
+    }
+
+    // Refresh formula-driven read-only cells from server response
+    if (result.updatedTotals) {
+      updateReadOnlyValues(result.updatedTotals);
+    }
+
+    state.dirty = false;
+    document.getElementById('unsaved-dot').classList.remove('visible');
+    showToast('Saved successfully ✓', 'success');
+
+    if (result.errors && result.errors.length > 0) {
+      console.warn('Apps Script reported label mismatches:', result.errors);
+      showToast('Saved (some labels not found — check console)', 'info');
+    }
+
+  } catch (err) {
+    showToast('Save failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled  = false;
+    btn.classList.remove('loading');
+    btn.textContent = 'Save Changes';
+  }
+}
+
+function updateReadOnlyValues(totals) {
+  // Update all formula/read-only spans
+  document.querySelectorAll('[data-readonly-label]').forEach(el => {
+    const label = el.dataset.readonlyLabel;
+    if (totals[label] !== undefined) {
+      el.textContent = formatINR(totals[label]);
+    }
+  });
+
+  // Update summary card
+  document.querySelectorAll('[data-summary-key]').forEach(el => {
+    const key = el.dataset.summaryKey;
+    if (totals[key] !== undefined) {
+      el.textContent = formatINR(totals[key]);
+      el.className = 'summary-value ' + getSummaryClassByKey(key, totals[key]);
+    }
+  });
+}
+
+function getSummaryClassByKey(key, val) {
+  if (key === 'Net Balance') return getSummaryClass('netbal', val);
+  if (key === 'Monthly Income') return 'income';
+  if (key === 'Total Expenses') return 'expense';
+  if (key === 'Total Investments') return 'invest';
+  return '';
+}
+
+// ================================================================
+// UI helpers
+// ================================================================
+function showSkeleton()  { document.getElementById('skeleton').style.display = 'block'; }
+function hideSkeleton()  { document.getElementById('skeleton').style.display = 'none';  }
+function showContent()   { document.getElementById('content').style.display  = 'block'; }
+function hideContent()   { document.getElementById('content').style.display  = 'none';  }
+
+function showError(msg) {
+  document.getElementById('error-msg-text').textContent = msg;
+  document.getElementById('error-state').style.display  = 'block';
+  hideContent();
+}
+function hideError() {
+  document.getElementById('error-state').style.display = 'none';
+}
+
+function retryLoad() {
+  delete state.cache[state.currentMonth];
+  loadMonth(state.currentMonth);
+}
+
+let toastTimer;
+function showToast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// Warn on tab close/navigate away if unsaved
+window.addEventListener('beforeunload', e => {
+  if (state.dirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// ================================================================
+// Init
+// ================================================================
+function init() {
+  renderTabs();
+  loadMonth(state.currentMonth);
+}
+
+init();
+</script>
+</body>
+</html>
